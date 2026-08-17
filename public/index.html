@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="si">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ඇනිමි WORLD | Sri Lanka Manga</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <a class="brand" href="#"><img src="logo.png"><span><b>ඇනිමි WORLD</b><small>SRI LANKA MANGA</small></span></a>
+  <nav><a href="#library">Manga</a><a href="#latest">Latest</a><a href="#about">About</a><button onclick="openAdmin()">ADMIN</button></nav>
+</header>
+
+<section class="hero">
+  <div><small class="gold">🇱🇰 SRI LANKA MANGA HUB</small>
+  <h1>ඔයාගේ Manga ලෝකයට<br><em>WELCOME!</em></h1>
+  <p>Original සහ licensed Manga chapters සඳහා clean, fast, mobile-friendly reading platform එක.</p>
+  <a class="cta" href="#library">MANGA LIBRARY →</a></div>
+  <img class="heroLogo" src="logo.png">
+</section>
+
+<section id="latest" class="section">
+ <div class="title"><small class="gold">LATEST</small><h2>අලුත්ම Manga</h2></div>
+ <div id="latestGrid" class="grid"></div>
+</section>
+
+<section id="library" class="section dark">
+ <div class="titleRow"><div class="title"><small class="gold">LIBRARY</small><h2>Manga Library</h2></div><input id="search" placeholder="🔎 Search Manga" oninput="loadManga()"></div>
+ <div id="grid" class="grid"></div><p id="none" class="none" hidden>No Manga found.</p>
+</section>
+
+<section id="about" class="about"><small class="gold">ABOUT</small><h2>ඇනිමි WORLD — Sri Lanka Manga</h2><p>ශ්‍රී ලංකාවේ original manga creators සඳහා modern reading platform එකක්. Admin panel එකෙන් ඔයාගේම Manga සහ chapters manage කරන්න.</p></section>
+<footer><b>ඇනිමි WORLD</b><span>SRI LANKA MANGA • © 2026</span></footer>
+
+<div id="reader" class="modal"><div class="reader"><button class="close" onclick="closeModal('reader')">×</button><small class="gold">CHAPTER READER</small><h2 id="rTitle"></h2><div id="pages"></div></div></div>
+
+<div id="admin" class="modal"><div class="admin"><button class="close" onclick="closeModal('admin')">×</button>
+<div id="loginBox"><small class="gold">ADMIN</small><h2>Admin Login</h2><input id="user" placeholder="Username"><input id="pass" type="password" placeholder="Password"><button class="cta full" onclick="login()">LOGIN</button><p class="hint">Default: admin / change-this-password</p></div>
+<div id="panel" hidden><div class="panelHead"><div><small class="gold">ADMIN PANEL</small><h2>Manga Manager</h2></div><button onclick="logout()">Logout</button></div>
+<div class="form">
+<label>Title<input id="mTitle" placeholder="Manga title"></label>
+<label>Description<textarea id="mDesc" placeholder="Description"></textarea></label>
+<label>Cover<input id="cover" type="file" accept="image/*"></label>
+<label>Chapter name<input id="chName" value="Chapter 01"></label>
+<label>Chapter pages<input id="pagesFile" type="file" accept="image/*" multiple></label>
+<button class="cta full" onclick="addManga()">UPLOAD MANGA</button>
+</div>
+<h3>Existing Manga</h3><div id="manage"></div></div>
+</div></div>
+
+<script>
+async function api(url,opt={}){const r=await fetch(url,opt);const d=await r.json();if(!r.ok)throw Error(d.error||'Request failed');return d}
+function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function card(m){const cover=m.cover?`<img class="cover" src="${m.cover}">`:`<div class="fallback">${esc(m.title).slice(0,2).toUpperCase()}</div>`;return `<article class="card">${cover}<div class="body"><h3>${esc(m.title)}</h3><p>${esc(m.description||'Original Manga')}</p><small>${m.chapters.length} chapter(s)</small><button class="read" onclick="read('${m.id}')">📖 READ</button></div></article>`}
+async function loadManga(){const q=document.getElementById('search').value;const list=await api('/api/manga?q='+encodeURIComponent(q));document.getElementById('grid').innerHTML=list.map(card).join('');document.getElementById('latestGrid').innerHTML=list.slice(0,3).map(card).join('');document.getElementById('none').hidden=list.length>0}
+async function read(id){const m=await api('/api/manga/'+id);document.getElementById('rTitle').textContent=m.title;document.getElementById('pages').innerHTML=m.chapters.map(c=>`<h3 class="ch">${esc(c.name)}</h3>`+(c.pages.length?c.pages.map((p,i)=>`<img class="page" src="${p}" alt="Page ${i+1}">`).join(''):'<p class="none">No pages uploaded.</p>')).join('');openModal('reader')}
+function openModal(id){document.getElementById(id).classList.add('show');document.body.style.overflow='hidden'}function closeModal(id){document.getElementById(id).classList.remove('show');document.body.style.overflow=''}
+async function openAdmin(){openModal('admin');const me=await api('/api/me');showPanel(me.admin)}
+function showPanel(ok){document.getElementById('loginBox').hidden=ok;document.getElementById('panel').hidden=!ok;if(ok)manage()}
+async function login(){try{await api('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:document.getElementById('user').value,password:document.getElementById('pass').value})});showPanel(true)}catch(e){alert(e.message)}}
+async function logout(){await api('/api/logout',{method:'POST'});showPanel(false)}
+async function addManga(){const fd=new FormData();fd.append('title',mTitle.value);fd.append('description',mDesc.value);fd.append('chapterName',chName.value);if(cover.files[0])fd.append('cover',cover.files[0]);for(const f of pagesFile.files)fd.append('pages',f);try{await api('/api/manga',{method:'POST',body:fd});alert('Manga uploaded!');mTitle.value='';mDesc.value='';cover.value='';pagesFile.value='';await manage();await loadManga()}catch(e){alert(e.message)}}
+async function manage(){const list=await api('/api/manga');document.getElementById('manage').innerHTML=list.map(m=>`<div class="manage"><span><b>${esc(m.title)}</b><small>${m.chapters.length} chapter(s)</small></span><button class="danger" onclick="delManga('${m.id}')">DELETE</button></div>`).join('')||'<p class="hint">No Manga yet.</p>'}
+async function delManga(id){if(!confirm('Delete this Manga and its files?'))return;try{await api('/api/manga/'+id,{method:'DELETE'});manage();loadManga()}catch(e){alert(e.message)}}
+loadManga();
+</script>
+</body>
+</html>
